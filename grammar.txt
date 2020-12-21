@@ -1,0 +1,15 @@
+QUERY -> QUERY_MANY | QUERY_SINGLE | NUM
+QUERY_MANY -> AGGR COL WHERE
+QUERY_SINGLE -> SINGLE AGGR COL
+AGGR -> MIN | MAX | COUNT | ALL
+WHERE -> OP COL | OP NUM
+OP -> EQUAL | LESS | MORE
+EQUAL -> 'are' | 'is'
+LESS -> 'less'
+MORE -> 'more' | 'more' 'than'
+MIN -> 'the' 'least'
+MAX -> 'the' 'most'
+COUNT -> 'how' 'many'
+ALL -> 'show' 'me' | 'find' | 'list'
+SINGLE -> 'who' 'has'
+COL -> 'people' | 'male' | 'salary'

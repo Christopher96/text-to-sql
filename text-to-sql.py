@@ -2,27 +2,23 @@ import nltk
 from nltk.parse.recursivedescent import RecursiveDescentParser
 from nltk import CFG
 
-cfgstring = """
-QUERY -> QUERY_MANY | QUERY_SINGLE
-QUERY_MANY -> AGGR COL WHERE
-QUERY_SINGLE -> SINGLE AGGR COL
-AGGR -> MIN | MAX | COUNT | ALL
-WHERE -> OP COL
-OP -> EQUAL | LESS | MORE
-EQUAL -> 'are' | 'is'
-LESS -> 'less'
-MORE -> 'more'
-MIN -> 'the' 'least'
-MAX -> 'the' 'most'
-COUNT -> 'how' 'many'
-ALL -> 'show' 'me' | 'find' | 'list'
-SINGLE -> 'who' 'has'
-COL -> 'people' | 'male' | 'salary'
-"""
+tags = ["NUM"]
 
-grammar = CFG.fromstring(cfgstring)
+def populateGrammar(sent):
+    f = open("grammar.txt", "r")
+    grammar = f.read()
 
-rd = RecursiveDescentParser(grammar)
+    split = sent.split()
+    tagged = nltk.pos_tag(split, tagset="universal")
+    for i in range(len(split)):
+        word, tag = tagged[i]
+        if tag in tags:
+            grammar += f"{tag} -> '{word}'\n"
+
+    print(grammar)
+
+    return CFG.fromstring(grammar)
+
 
 def whereToQuery(where):
     where_op = where[0]
@@ -50,18 +46,21 @@ def labelToSign(label):
     return signs.get(label)
 
 def buildQuery(sent, table):
-    query = False
+    parsed = None
 
-    for p in rd.parse(sent.split()):
-        query = p
-        break
+    grammar = populateGrammar(sent)
+    rd = RecursiveDescentParser(grammar)
 
-    if not query:
+    try:
+        for p in rd.parse(sent.split()):
+            parsed = p
+            break
+    except:
         return False
 
     query_string = "SELECT"
     is_single = False
-    query = query[0]
+    query = parsed[0]
     query_label = query.label()
     if(query_label == "QUERY_MANY"):
         aggr = query[0]
