@@ -1,5 +1,5 @@
 QUERY -> QUERY_MANY | QUERY_SINGLE | NUM
-QUERY_MANY -> AGGR COL WHERE
+QUERY_MANY -> AGGR TABLE WHERE
 QUERY_SINGLE -> SINGLE AGGR COL
 AGGR -> MIN | MAX | COUNT | ALL
 WHERE -> OP COL | OP NUM
@@ -12,4 +12,4 @@ MAX -> 'the' 'most'
 COUNT -> 'how' 'many'
 ALL -> 'show' 'me' | 'find' | 'list'
 SINGLE -> 'who' 'has'
-COL -> 'people' | 'male' | 'salary'
+COL -> 'male' | 'salary'

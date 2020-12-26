@@ -1,24 +1,35 @@
 import nltk
+import mysql.connector
 from nltk.parse.recursivedescent import RecursiveDescentParser
 from nltk import CFG
 
-tags = ["NUM"]
+table = "people"
 
-def populateGrammar(sent):
+conn = mysql.connector.connect(
+  host="localhost",
+  user="root",
+  password="",
+  database="test"
+)
+
+cursor = conn.cursor(buffered=True)
+
+def populateGrammar(sent, table):
     f = open("grammar.txt", "r")
     grammar = f.read()
+    f.close()
 
     split = sent.split()
     tagged = nltk.pos_tag(split, tagset="universal")
     for i in range(len(split)):
         word, tag = tagged[i]
-        if tag in tags:
+        # Tags we want to include in the grammar
+        if tag in ["NUM"]:
             grammar += f"{tag} -> '{word}'\n"
 
-    print(grammar)
+    grammar += f"TABLE -> '{table}'"
 
     return CFG.fromstring(grammar)
-
 
 def whereToQuery(where):
     where_op = where[0]
@@ -37,18 +48,18 @@ def whereToQuery(where):
 
 def labelToSign(label):
     signs = {
-        'ALL' : '*',
-        'COUNT' : 'COUNT(*)',
-        "EQUAL" : '=',
-        "LESS" : '<',
-        "MORE" : '>'
-    }
+            'ALL' : '*',
+            'COUNT' : 'COUNT(*)',
+            "EQUAL" : '=',
+            "LESS" : '<',
+            "MORE" : '>'
+            }
     return signs.get(label)
 
 def buildQuery(sent, table):
     parsed = None
 
-    grammar = populateGrammar(sent)
+    grammar = populateGrammar(sent, table)
     rd = RecursiveDescentParser(grammar)
 
     try:
@@ -84,14 +95,67 @@ def buildQuery(sent, table):
 
     return query_string
 
-table = "people"
+def testQuery(query, match):
+    if query == match:
+        print(f"OK: {query}")
+    else:
+        print("Query does not match.\n")
+        print(f"Got: {query}")
+        print(f"Should be: {match}")
 
-with open('sample.txt', 'r') as f:
-    for sent in f:
-        sent = sent.replace('\n', '')
-        print(sent)
+def executeQuery(query):
+    cursor.execute(query)
+    conn.commit()
+
+def printResults():
+    results = cursor.fetchall()
+
+    widths = []
+    columns = []
+    tavnit = '|'
+    separator = '+' 
+
+    for cd in cursor.description:
+        widths.append(max(5, len(cd[0])))
+        columns.append(cd[0])
+
+    for w in widths:
+        tavnit += " %-"+"%ss |" % (w,)
+        separator += '-'*w + '--+'
+
+    print(separator)
+    print(tavnit % tuple(columns))
+    print(separator)
+    for row in results:
+        print(tavnit % row)
+    print(separator)
+
+
+f = open("sentences.txt", "r")
+sentences = f.read().split("\n")
+f = open("queries.txt", "r")
+queries = f.read().split("\n")
+f = open(f"{table}.sql", "r")
+table_dump = f.read()
+f.close()
+
+executeQuery("SELECT * FROM people")
+printResults()
+
+for i in range(len(sentences)):
+    break
+    sent = sentences[i]
+    if sent:
+        print(f"Parsing: {sent}")
         query = buildQuery(sent, table)
+        print(query)
+        executeQuery(query)
+        printResults()
         if query:
             print(query)
+            # testQuery(query, queries[i])
         else:
             print("Unable to parse sentence")
+
+
+conn.close()
