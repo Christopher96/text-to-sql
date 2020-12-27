@@ -38,22 +38,22 @@ def whereToQuery(where):
     where_col_val = where[1].leaves()[0]
     op_sign = labelToSign(where_op_type_label)
 
-    where = f"WHERE {where_col_val} {op_sign}"
+    where_query = f" WHERE {where_col_val} {op_sign}"
 
     if(where_op_type_label == "EQUAL"):
-        where += " True"
+        where_query += " True"
 
-    return where
+    return where_query
 
 
 def labelToSign(label):
     signs = {
-            'ALL' : '*',
-            'COUNT' : 'COUNT(*)',
-            "EQUAL" : '=',
-            "LESS" : '<',
-            "MORE" : '>'
-            }
+        'ALL' : '*',
+        'COUNT' : 'COUNT(*)',
+        "EQUAL" : '=',
+        "LESS" : '<',
+        "MORE" : '>'
+    }
     return signs.get(label)
 
 def buildQuery(sent, table):
@@ -73,12 +73,17 @@ def buildQuery(sent, table):
     is_single = False
     query = parsed[0]
     query_label = query.label()
+
+    aggr_query = ""
+    from_query = f" FROM {table}"
+    where_query = ""
+
     if(query_label == "QUERY_MANY"):
         aggr = query[0]
         aggr_label = aggr[0].label()
         aggr_sign = labelToSign(aggr_label)
         where_query = whereToQuery(query[2])
-        query_string += f" {aggr_sign} {where_query}"
+        aggr_query = f" {aggr_sign}"
 
     elif(query_label == "QUERY_SINGLE"):
         is_single = True
@@ -86,9 +91,11 @@ def buildQuery(sent, table):
         col = query[2]
         aggr_label = aggr[0].label()
         aggr_col_val = col.leaves()[0]
-        query_string += f" {aggr_label}({aggr_col_val})"
+        aggr_query = f" {aggr_label}({aggr_col_val})"
 
-    query_string += f" FROM {table}"
+    query_string += aggr_query
+    query_string += from_query
+    query_string += where_query
 
     if is_single:
         query_string += " LIMIT 1"
@@ -116,7 +123,7 @@ def printResults():
     separator = '+' 
 
     for cd in cursor.description:
-        widths.append(max(5, len(cd[0])))
+        widths.append(15)
         columns.append(cd[0])
 
     for w in widths:
@@ -126,8 +133,8 @@ def printResults():
     print(separator)
     print(tavnit % tuple(columns))
     print(separator)
-    for row in results:
-        print(tavnit % row)
+    # for row in results:
+    #     print(tavnit % row)
     print(separator)
 
 
@@ -139,11 +146,10 @@ f = open(f"{table}.sql", "r")
 table_dump = f.read()
 f.close()
 
-executeQuery("SELECT * FROM people")
-printResults()
+# executeQuery("select * from people")
+# printResults()
 
 for i in range(len(sentences)):
-    break
     sent = sentences[i]
     if sent:
         print(f"Parsing: {sent}")
