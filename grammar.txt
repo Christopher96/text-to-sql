@@ -1,14 +1,12 @@
-QUERY -> QUERY_MANY | QUERY_SINGLE | NUM
-QUERY_MANY -> AGGR TABLE WHERE
-QUERY_SINGLE -> SINGLE AGGR COL
+QUERY -> AGGR TABLE WHERE | SINGLE AGGR COL
 AGGR -> MIN | MAX | COUNT | ALL
-WHERE -> OP COL | OP NUM
+WHERE -> OP COL ANY | ANY COL OP NUM
 OP -> EQUAL | LESS | MORE
-EQUAL -> 'are' | 'is'
+EQUAL -> 'are' | 'is' | 'with' 'the'
 LESS -> 'less'
-MORE -> 'more' | 'more' 'than'
-MIN -> 'the' 'least'
-MAX -> 'the' 'most'
+MORE -> 'more' | 'more' 'than' | 'over'
+MIN -> 'the' 'lowest' | 'the' 'least'
+MAX -> 'the' 'highest' | 'the' 'most'
 COUNT -> 'how' 'many'
-ALL -> 'show' 'me' | 'find' | 'list'
-SINGLE -> 'who' 'has'
+ALL -> 'show' 'me' | 'find' | 'list' 'all'
+SINGLE -> 'what' 'is'

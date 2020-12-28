@@ -1,49 +1,75 @@
 import nltk
 import mysql.connector
+import sys
 from nltk.parse.recursivedescent import RecursiveDescentParser
 from nltk import CFG
 
 table = "people"
 
 conn = mysql.connector.connect(
-  host="localhost",
-  user="root",
-  password="",
-  database="test"
-)
+        host="localhost",
+        user="root",
+        password="",
+        database="test"
+        )
 
 cursor = conn.cursor(buffered=True)
 
-def populateGrammar(sent, table):
-    f = open("grammar.txt", "r")
-    grammar = f.read()
-    f.close()
+def populateGrammar(sent):
+    grammar = readFile("grammar.txt")
 
     split = sent.split()
     tagged = nltk.pos_tag(split, tagset="universal")
     for i in range(len(split)):
         word, tag = tagged[i]
-        # Tags we want to include in the grammar
-        if tag in ["NUM"]:
-            grammar += f"{tag} -> '{word}'\n"
+        # We include all tags in grammar
+        grammar += f"{tag} -> '{word}'\n"
+        grammar += f"ANY -> '{word}'\n"
 
-    grammar += f"TABLE -> '{table}'"
+    grammar += f"TABLE -> '{table}'\n"
+
+    executeQuery(f"describe {table}")
+    results = cursor.fetchall()
+
+    for col in results: 
+        col_name = col[0]
+        grammar += f"COL -> '{col_name}'\n"
+
 
     return CFG.fromstring(grammar)
 
+def queryType(query):
+    labels = []
+    for node in query:
+        labels.append(node.label())
+
+    return " ".join(labels)
+
 def whereToQuery(where):
-    where_op = where[0]
-    where_op_type = where_op[0]
-    where_op_type_label = where_op_type.label()
-    where_col_val = where[1].leaves()[0]
-    op_sign = labelToSign(where_op_type_label)
+    query_type = queryType(where)
 
-    where_query = f" WHERE {where_col_val} {op_sign}"
+    op = col = []
 
-    if(where_op_type_label == "EQUAL"):
-        where_query += " True"
+    if query_type == "OP COL ANY":
+        op, col, noun = where
+        col_search = noun.leaves()[0]
+    elif query_type == "ANY COL OP NUM":
+        any, col, op, num = where
+        col_search = num.leaves()[0]
 
-    return where_query
+    op_type = op[0]
+    op_type_label = op_type.label()
+    col_name = col.leaves()[0]
+    op_sign = labelToSign(op_type_label)
+
+    query = f" WHERE {col_name} {op_sign}"
+
+    if(col_search != ""):
+        query += f" '{col_search}'"
+    else:
+        query += " True"
+
+    return query
 
 
 def labelToSign(label):
@@ -52,53 +78,48 @@ def labelToSign(label):
         'COUNT' : 'COUNT(*)',
         "EQUAL" : '=',
         "LESS" : '<',
-        "MORE" : '>'
+        "MORE" : '>',
     }
     return signs.get(label)
 
-def buildQuery(sent, table):
-    parsed = None
+def buildQuery(sent):
+    query = None
 
-    grammar = populateGrammar(sent, table)
+    grammar = populateGrammar(sent)
     rd = RecursiveDescentParser(grammar)
 
     try:
         for p in rd.parse(sent.split()):
-            parsed = p
+            query = p
             break
     except:
         return False
 
-    query_string = "SELECT"
-    is_single = False
-    query = parsed[0]
-    query_label = query.label()
+    if not query: return False
+
+    query_type = queryType(query)
 
     aggr_query = ""
     from_query = f" FROM {table}"
     where_query = ""
 
-    if(query_label == "QUERY_MANY"):
-        aggr = query[0]
+    if(query_type == "AGGR TABLE WHERE"):
+        aggr, tabl, where = query
         aggr_label = aggr[0].label()
         aggr_sign = labelToSign(aggr_label)
         where_query = whereToQuery(query[2])
         aggr_query = f" {aggr_sign}"
-
-    elif(query_label == "QUERY_SINGLE"):
-        is_single = True
-        aggr = query[1]
-        col = query[2]
+    elif(query_type == "SINGLE AGGR COL"):
+        single, aggr, col = query
         aggr_label = aggr[0].label()
+        aggr_sign = labelToSign(aggr_label)
         aggr_col_val = col.leaves()[0]
         aggr_query = f" {aggr_label}({aggr_col_val})"
 
+    query_string = "SELECT"
     query_string += aggr_query
     query_string += from_query
     query_string += where_query
-
-    if is_single:
-        query_string += " LIMIT 1"
 
     return query_string
 
@@ -133,35 +154,49 @@ def printResults():
     print(separator)
     print(tavnit % tuple(columns))
     print(separator)
-    # for row in results:
-    #     print(tavnit % row)
+    for row in results:
+        print(tavnit % row)
     print(separator)
 
+def readFile(name):
+    f = open(name, "r")
+    txt = f.read()
+    f.close()
+    return txt
 
-f = open("sentences.txt", "r")
-sentences = f.read().split("\n")
-f = open("queries.txt", "r")
-queries = f.read().split("\n")
-f = open(f"{table}.sql", "r")
-table_dump = f.read()
-f.close()
 
-# executeQuery("select * from people")
-# printResults()
+def testQuestions():
+    sentences = readFile("sentences.txt").split("\n")
+    queries = readFile("queries.txt").split("\n")
 
-for i in range(len(sentences)):
-    sent = sentences[i]
-    if sent:
-        print(f"Parsing: {sent}")
-        query = buildQuery(sent, table)
-        print(query)
-        executeQuery(query)
-        printResults()
-        if query:
-            print(query)
-            # testQuery(query, queries[i])
-        else:
-            print("Unable to parse sentence")
+    for i in range(len(sentences)):
+        sent = sentences[i]
+        if sent:
+            print(f"Parsing: {sent}")
+            query = buildQuery(sent)
+            if query:
+                testQuery(query, queries[i])
+            else:
+                print("Unable to parse sentence")
 
+
+def promptQuestion():
+    while True:
+        try:
+            question = input("Ask me something: ").replace("?", "")
+            query = buildQuery(question)
+            if query:
+                print(f"\n{query}")
+                executeQuery(query)
+                printResults()
+                print()
+            else:
+                print("Unable to parse sentence")
+        except KeyboardInterrupt:
+            print("Exiting...")
+            break
+
+promptQuestion()
 
 conn.close()
+sys.exit()

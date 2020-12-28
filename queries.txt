@@ -1,3 +1,3 @@
-how many people are male
-who has the most salary
-123
+show me people with the name Josh
+what is the highest salary
+list all people with salary over 90000
