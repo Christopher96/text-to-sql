@@ -196,7 +196,8 @@ def promptQuestion():
             print("Exiting...")
             break
 
-promptQuestion()
+# promptQuestion()
+testQuestions()
 
 conn.close()
 sys.exit()
