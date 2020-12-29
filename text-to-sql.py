@@ -122,7 +122,6 @@ def buildQuery(sent):
 
         for p in rd.parse(sent.split()):
             query = p
-
             break
     except Exception as e:
         print(e)
