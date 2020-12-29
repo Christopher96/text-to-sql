@@ -1,3 +1,7 @@
 show me people with the name Josh
 what is the highest salary
 list all people with salary over 90000
+list all people with the gender male
+list all people with the gender male and with salary over 90000 and with id over 50
+list all people with the gender female and with id less than 60 
+show me people with the id 77 or with the name Josh

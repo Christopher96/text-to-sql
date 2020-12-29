@@ -1,12 +1,14 @@
 QUERY -> AGGR TABLE WHERE | SINGLE AGGR COL
 AGGR -> MIN | MAX | COUNT | ALL
-WHERE -> OP COL ANY | ANY COL OP NUM
+WHERE ->  WHERE JOINER WHERE | OP COL ANY | ANY COL OP NUM
+COMBINED -> WHERE JOINER WHERE
 OP -> EQUAL | LESS | MORE
+JOINER -> 'and' | 'or'
 EQUAL -> 'are' | 'is' | 'with' 'the'
-LESS -> 'less'
+LESS -> 'less' | 'less' 'than'
 MORE -> 'more' | 'more' 'than' | 'over'
 MIN -> 'the' 'lowest' | 'the' 'least'
 MAX -> 'the' 'highest' | 'the' 'most'
 COUNT -> 'how' 'many'
-ALL -> 'show' 'me' | 'find' | 'list' 'all'
+ALL -> 'show' 'me' | 'find' | 'list' 'all' | 'show'
 SINGLE -> 'what' 'is'

@@ -1,25 +1,32 @@
 import nltk
 import mysql.connector
 import sys
+from nltk import Tree
+from nltk.parse.chart import ChartParser
 from nltk.parse.recursivedescent import RecursiveDescentParser
 from nltk import CFG
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 table = "people"
 
 conn = mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="",
-        database="test"
-        )
+    host="localhost",
+    user=os.environ.get("DB_USER", "root"),
+    password=os.environ.get("DB_PASSWORD", ""),
+    database=os.environ.get("DB_NAME", "test")
+)
 
 cursor = conn.cursor(buffered=True)
+
 
 def populateGrammar(sent):
     grammar = readFile("grammar.txt")
 
     split = sent.split()
     tagged = nltk.pos_tag(split, tagset="universal")
+
     for i in range(len(split)):
         word, tag = tagged[i]
         # We include all tags in grammar
@@ -31,12 +38,12 @@ def populateGrammar(sent):
     executeQuery(f"describe {table}")
     results = cursor.fetchall()
 
-    for col in results: 
+    for col in results:
         col_name = col[0]
         grammar += f"COL -> '{col_name}'\n"
 
-
     return CFG.fromstring(grammar)
+
 
 def queryType(query):
     labels = []
@@ -45,15 +52,15 @@ def queryType(query):
 
     return " ".join(labels)
 
+
 def whereToQuery(where):
     query_type = queryType(where)
-
     op = col = []
 
-    if query_type == "OP COL ANY":
+    if query_type.startswith("OP COL ANY"):
         op, col, noun = where
         col_search = noun.leaves()[0]
-    elif query_type == "ANY COL OP NUM":
+    elif query_type.startswith("ANY COL OP NUM"):
         any, col, op, num = where
         col_search = num.leaves()[0]
 
@@ -62,7 +69,7 @@ def whereToQuery(where):
     col_name = col.leaves()[0]
     op_sign = labelToSign(op_type_label)
 
-    query = f" WHERE {col_name} {op_sign}"
+    query = f"{col_name} {op_sign}"
 
     if(col_search != ""):
         query += f" '{col_search}'"
@@ -74,42 +81,69 @@ def whereToQuery(where):
 
 def labelToSign(label):
     signs = {
-        'ALL' : '*',
-        'COUNT' : 'COUNT(*)',
-        "EQUAL" : '=',
-        "LESS" : '<',
-        "MORE" : '>',
+        'ALL': '*',
+        'COUNT': 'COUNT(*)',
+        "EQUAL": '=',
+        "LESS": '<',
+        "MORE": '>',
     }
     return signs.get(label)
+
+
+def buildWhere(nodes: Tree):
+    labels = []
+    stm = ""
+    node: Tree
+
+    def onlyWhere(n: Tree):
+        return n.label() == "WHERE"
+
+    for node in nodes:
+        if node.label() == "WHERE":
+            if len(list(node.subtrees(filter=onlyWhere))) > 1:
+                stm += buildWhere(node)
+            else:
+                # Here we are the leaf node...
+                stm += whereToQuery(node)
+
+        if node.label() == "JOINER":
+            stm += " " + node.leaves()[0].upper() + " "
+
+    return stm
+
 
 def buildQuery(sent):
     query = None
 
     grammar = populateGrammar(sent)
-    rd = RecursiveDescentParser(grammar)
+    rd = ChartParser(grammar)
 
     try:
+
         for p in rd.parse(sent.split()):
             query = p
+
             break
-    except:
+    except Exception as e:
+        print(e)
         return False
 
-    if not query: return False
+    if not query:
+        return False
 
     query_type = queryType(query)
-
     aggr_query = ""
-    from_query = f" FROM {table}"
     where_query = ""
+    from_query = f" FROM {table}"
 
-    if(query_type == "AGGR TABLE WHERE"):
+    if(query_type.startswith("AGGR TABLE WHERE")):
         aggr, tabl, where = query
         aggr_label = aggr[0].label()
         aggr_sign = labelToSign(aggr_label)
-        where_query = whereToQuery(query[2])
+        where_query = " WHERE " + buildWhere(query)
         aggr_query = f" {aggr_sign}"
-    elif(query_type == "SINGLE AGGR COL"):
+
+    elif(query_type.startswith("SINGLE AGGR COL")):
         single, aggr, col = query
         aggr_label = aggr[0].label()
         aggr_sign = labelToSign(aggr_label)
@@ -123,6 +157,7 @@ def buildQuery(sent):
 
     return query_string
 
+
 def testQuery(query, match):
     if query == match:
         print(f"OK: {query}")
@@ -130,10 +165,13 @@ def testQuery(query, match):
         print("Query does not match.\n")
         print(f"Got: {query}")
         print(f"Should be: {match}")
+        assert False
+
 
 def executeQuery(query):
     cursor.execute(query)
     conn.commit()
+
 
 def printResults():
     results = cursor.fetchall()
@@ -141,7 +179,7 @@ def printResults():
     widths = []
     columns = []
     tavnit = '|'
-    separator = '+' 
+    separator = '+'
 
     for cd in cursor.description:
         widths.append(15)
@@ -157,6 +195,7 @@ def printResults():
     for row in results:
         print(tavnit % row)
     print(separator)
+
 
 def readFile(name):
     f = open(name, "r")
@@ -196,8 +235,11 @@ def promptQuestion():
             print("Exiting...")
             break
 
-# promptQuestion()
-testQuestions()
 
-conn.close()
-sys.exit()
+if __name__ == "__main__":
+
+    # promptQuestion()
+    testQuestions()
+
+    conn.close()
+    sys.exit()
