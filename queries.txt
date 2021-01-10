@@ -5,3 +5,6 @@ SELECT * FROM people WHERE gender = 'male'
 SELECT * FROM people WHERE gender = 'male' AND salary > '90000' AND id > '50'
 SELECT * FROM people WHERE gender = 'female' AND id < '60'
 SELECT * FROM people WHERE id = '77' OR name = 'Josh'
+SELECT MIN(id) FROM people
+SELECT MAX(id) FROM people
+SELECT COUNT(*) FROM people WHERE salary > '50000'
