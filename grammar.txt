@@ -1,8 +1,8 @@
 QUERY -> AGGR TABLE WHERE | SINGLE AGGR COL
 AGGR -> MIN | MAX | COUNT | ALL
-WHERE ->  WHERE JOINER WHERE | OP COL ANY | ANY COL OP NUM
+WHERE ->  WHERE CONJ WHERE | OP COL ANY | ANY COL OP NUM
 OP -> EQUAL | LESS | MORE
-JOINER -> 'and' | 'or'
+CONJ -> 'and' | 'or'
 EQUAL -> 'are' | 'is' | 'with' 'the'
 LESS -> 'less' | 'less' 'than'
 MORE -> 'more' | 'more' 'than' | 'over'

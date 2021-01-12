@@ -106,7 +106,7 @@ def buildWhere(nodes: Tree):
                 # Here we are the leaf node...
                 stm += whereToQuery(node)
 
-        if node.label() == "JOINER":
+        if node.label() == "CONJ":
             stm += " " + node.leaves()[0].upper() + " "
 
     return stm
@@ -237,8 +237,8 @@ def promptQuestion():
 
 if __name__ == "__main__":
 
-    # promptQuestion()
-    testQuestions()
+    promptQuestion()
+    # testQuestions()
 
     conn.close()
     sys.exit()
